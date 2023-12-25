@@ -809,4 +809,161 @@ El algoritmo Q-learning es fundamental en el aprendizaje por refuerzo, un métod
 
 Si bien el entorno Frozen Lake es simple, en entornos más complejos, el almacenamiento de la tabla Q puede ser imposible debido al gran número de estados y acciones, especialmente en entornos continuos (como Super Mario Bros. o Minecraft). Para abordar esto, una técnica popular involucra el uso de redes neuronales profundas para aproximar la tabla Q. Sin embargo, esto añade complejidad debido a la inestabilidad de las redes neuronales.
 
+\vspace{1cm}
+
+\section{Mejoras}
+
+\vspace{1cm}
+
+En cuanto a las mejoras, vamos a cambiar el valor de los parámetros para aumentar así el porcentaje de éxito del agente. En primer lugar, vamos a encapsular el codigo en funciones de python, para aumentar eficiencia y legibilidad:
+
+\vspace{0.5cm}
+
+\begin{lstlisting}[style=mystyle]
+    def training(environment, qtable ,episodes, alpha, gamma, epsilon, epsilon_decay):
+      # Training
+      for _ in range(episodes):
+          state = environment.reset()
+          state = int(state[0])
+          done = False
+    
+          # By default, we consider our outcome to be a failure
+          outcomes.append("Failure")
+          
+          # Until the agent gets stuck in a hole or reaches the goal, keep training it
+          while not done:
+              # Generate a random number between 0 and 1
+              rnd = np.random.random()
+    
+              # If random number < epsilon, take a random action
+              if rnd < epsilon:
+                action = environment.action_space.sample()
+    
+              # Else, take the action with the highest value in the current state
+              else:
+                action = np.argmax(qtable[state])
+            
+              # Implement this action and move the agent in the desired direction
+              new_state, reward, done, truncated, info = environment.step(action)
+    
+              # Update Q(s,a)
+              qtable[state, action] = qtable[state, action] + \
+                                      alpha * (reward + gamma * np.max(qtable[new_state]) - qtable[state, action])
+    
+            
+              # Update our current state
+              state = new_state
+    
+              # If we have a reward, it means that our outcome is a success
+              if reward:
+                outcomes[-1] = "Success"
+    
+          # Update epsilon
+          epsilon = max(epsilon - epsilon_decay, 0)
+      
+      return qtable, outcomes
+    
+\end{lstlisting}
+
+\vspace{0.5cm}
+
+\begin{lstlisting}[style=mystyle]
+    def show_results(environment, qtable, outcomes):
+      print()
+      print('===========================================')
+      print('Q-table after training:')
+      print(qtable)
+    
+      # Plot outcomes
+      plt.figure(figsize=(12, 5))
+      plt.xlabel("Run number")
+      plt.ylabel("Outcome")
+      ax = plt.gca()
+      plt.bar(range(len(outcomes)), outcomes, width=1.0)
+      plt.show()
+\end{lstlisting}
+
+\vspace{0.5cm}
+
+\begin{lstlisting}[style=mystyle]
+    def get_success_rate(environment, qtable, episodes):
+      nb_success = 0
+    
+      # Evaluation
+      for _ in range(episodes):
+          state = environment.reset()
+          state = int(state[0])
+          done = False
+          
+          # Until the agent gets stuck or reaches the goal, keep training it
+          while not done:
+              # Choose the action with the highest value in the current state
+              action = np.argmax(qtable[state])
+    
+              # Implement this action and move the agent in the desired direction
+              new_state, reward, done, truncated, info = environment.step(action)
+    
+              # Update our current state
+              state = new_state
+    
+              # When we get a reward, it means we solved the game
+              nb_success += reward
+    
+      # Let's check our success rate!
+      return nb_success/episodes*100
+\end{lstlisting}
+
+\vspace{0.5cm}
+
+Con estas funciones, vamos a calcular que combinación de parámetros son los mejores para obtener la mayor tasa de éxito, con el siguiente código:
+
+\vspace{0.5cm}
+
+\begin{lstlisting}[style=mystyle]
+    best_success_rate = 0
+    best_params = {}
+    contador = 0
+    
+    for alpha in [0.1, 0.3, 0.5, 0.7, 0.9]:
+        for gamma in [0.8, 0.85, 0.9, 0.95, 0.99]:
+            for epsilon_decay in [0.0001, 0.0005, 0.001, 0.005]:
+                contador += 1
+                print("Iteración", contador)
+                table = np.zeros((environment.observation_space.n, environment.action_space.n))
+                qtable, outcomes = training(environment, table, episodes, alpha, gamma, epsilon, epsilon_decay)
+                success_rate = get_success_rate(environment, qtable, episodes)
+                if success_rate > best_success_rate:
+                    best_success_rate = success_rate
+                    best_params = {'alpha': alpha, 'gamma': gamma, 'epsilon_decay': epsilon_decay}
+    
+    print("Mejor tasa de éxito:", best_success_rate)
+    print("Mejores parámetros:", best_params)
+\end{lstlisting}
+
+\vspace{0.5cm}
+
+Obtenemos la siguiente salida en la terminal:
+
+\vspace{0.5cm}
+
+\begin{center}
+    \includegraphics[width=0.75\linewidth]{parametros.png}
+\end{center}
+
+\vspace{0.5cm}
+
+Esto nos indica que, para tener la mayor tasa de exito posible, entre los parámetros con los que hemos hecho el estudio, son:
+
+\vspace{0.5cm}
+
+\begin{center}
+    $\alpha = 0.3$ \\
+    $\beta = 0.95$ \\
+    $\epsilon_{decay} = 0.0005$ \\
+\end{center}
+
+\vspace{0.5cm}
+
+Siendo la mayor tasa de éxito posible de un 83\%.
+
 \end{document}
